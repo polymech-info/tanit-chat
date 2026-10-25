@@ -1,0 +1,12 @@
+# Nested tanit-viewer git repo: ignore the staged install tree.
+# Only the published docs surface (and product readme) is tracked.
+/*
+!.gitignore
+!/readme.md
+!/README.md
+!/LICENSE
+!/*.png
+!/*.jpg
+!/*.jpeg
+!/*.webp
+!/docs/
