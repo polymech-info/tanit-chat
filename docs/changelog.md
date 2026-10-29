@@ -1,6 +1,28 @@
 # Changelog
 
-End-user release notes for Tanit / Tanit Viewer.
+End-user release notes for Tanit
+
+## 1.0.86 - 29-10
+
+- Android: CMS tools | Voice Agent | UI | Markdown viewer | Scheduler | System/Planner/Real-time/User-Pref prompt picker and editor | MCP Server UI / Tanit LAN discover
+- LLM Tools: I/O (MQTT,Modbus,SSH)
+- MCP Server: discovery via mdns
+
+## 1.0.85 - 28-10
+
+- Android App & LLM client & server implementation
+- LLM server pairing
+
+## 1.0.85 - 27-10
+
+- VFS defaults for VCS
+- Settings UI
+
+## 1.0.84 - 26-10
+
+- Filebrowser : typeahead find matches mid-name tokens (`part` → `The.part.mp4`); idle multi-hit fan-out with Up/Down; Escape clears
+- Filebrowser : Space preview chrome — rounded frame and border on Windows 11, hairline + shadow on Windows 10
+- Filebrowser : DPI / multi-monitor scaling and 4K paint performance (persistent backbuffer, clipped redraw)
 
 ## 1.0.83 - 25-10
 
