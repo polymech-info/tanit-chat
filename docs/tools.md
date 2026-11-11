@@ -40,11 +40,12 @@ Params:
 - `-B` (<span data-cli="meta"><span data-cli="type">integer</span></span>)  -  Context lines before each match (rg -B N).
 - `-C` (<span data-cli="meta"><span data-cli="type">integer</span></span>)  -  Symmetric context lines (rg -C N, overrides -B / -A).
 - `-i` (<span data-cli="meta"><span data-cli="type">boolean</span></span>)  -  Case-insensitive (rg -i, default: true).
+- `fuzzy` (<span data-cli="meta"><span data-cli="type">boolean</span></span>)  -  Name mode only.
 - `glob` (<span data-cli="meta"><span data-cli="type">string</span></span>)  -  Filename glob filter (rg -g).
 - `head_limit` (<span data-cli="meta"><span data-cli="type">integer</span></span>)  -  Cap on returned hits.
 - `indexer` (<span data-cli="meta"><span data-cli="tag" data-variant="enum">one of</span> <span data-cli="choices" data-variant="enum"><span data-cli="choice">own</span> <span data-cli="choice">rg</span></span></span>)  -  rg = bundled ripgrep (recommended for large trees, code search, and any search you'd normally run with rg).
 - `inputs` (<span data-cli="meta"><span data-cli="type">array</span></span>)  -  Files or directories to search (rg PATH …).
-- `mode` (<span data-cli="meta"><span data-cli="tag" data-variant="enum">one of</span> <span data-cli="choices" data-variant="enum"><span data-cli="choice">grep</span> <span data-cli="choice">name</span></span></span>)  -  grep = full-text search (default, rg PATTERN); name = filename match (rg --files -g *query*).
+- `mode` (<span data-cli="meta"><span data-cli="tag" data-variant="enum">one of</span> <span data-cli="choices" data-variant="enum"><span data-cli="choice">grep</span> <span data-cli="choice">name</span></span></span>)  -  grep = full-text search (default, rg PATTERN); name = filename match.
 - `multiline` (<span data-cli="meta"><span data-cli="type">boolean</span></span>)  -  Multiline mode: .
 - `offset` (<span data-cli="meta"><span data-cli="type">integer</span></span>)  -  Skip first N hits (pagination).
 - `output_mode` (<span data-cli="meta"><span data-cli="tag" data-variant="enum">one of</span> <span data-cli="choices" data-variant="enum"><span data-cli="choice">content</span> <span data-cli="choice">files_with_matches</span></span></span>)  -  content = hits array with path/line/text (default); files_with_matches = deduplicated file paths (rg -l).
@@ -241,6 +242,12 @@ Play an existing audio file on the default speaker.
 Params:
 - `path` (<span data-cli="meta"><span data-cli="type">string</span>, <span data-cli="tag" data-variant="required">required</span></span>)  -  Audio file to play.
 
+#### suspend_voice
+
+End the live voice session and return to standby.
+
+Params:
+
 #### audio_transcribe
 
 Record from the default microphone, transcribe with the chat STT provider, and return the text.
@@ -296,6 +303,106 @@ Params:
 - `max_bytes` (<span data-cli="meta"><span data-cli="type">integer</span></span>)  -  Maximum body bytes when materializing a resource.
 - `max_results` (<span data-cli="meta"><span data-cli="type">integer</span></span>)  -  Maximum matches to return.
 - `query` (<span data-cli="meta"><span data-cli="type">string</span>, <span data-cli="tag" data-variant="required">required</span></span>)  -  Name or keyword, e.g.
+
+#### office_create
+
+Create a blank .docx, .xlsx, or .pptx.
+
+Params:
+- `path` (<span data-cli="meta"><span data-cli="type">string</span>, <span data-cli="tag" data-variant="required">required</span></span>)  -  Filesystem path of a .docx, .xlsx, or .pptx file.
+
+#### office_view
+
+Read a document as markdown, plain text, an outline, or word/sheet/slide stats.
+
+Params:
+- `mode` (<span data-cli="meta"><span data-cli="tag" data-variant="enum">one of</span> <span data-cli="choices" data-variant="enum"><span data-cli="choice">text</span> <span data-cli="choice">markdown</span> <span data-cli="choice">outline</span> <span data-cli="choice">stats</span></span></span>)  -  markdown returns the document and, for xlsx or ods, cells.
+- `path` (<span data-cli="meta"><span data-cli="type">string</span>, <span data-cli="tag" data-variant="required">required</span></span>)  -  Filesystem path of a .docx, .xlsx, or .pptx file.
+
+#### office_get
+
+Read one office node as JSON.
+
+Params:
+- `depth` (<span data-cli="meta"><span data-cli="type">integer</span></span>)  -  Child depth.
+- `node` (<span data-cli="meta"><span data-cli="type">string</span></span>)  -  Office path.
+- `path` (<span data-cli="meta"><span data-cli="type">string</span>, <span data-cli="tag" data-variant="required">required</span></span>)  -  Filesystem path of a .docx, .xlsx, or .pptx file.
+
+#### office_query
+
+Query a document with an office selector.
+
+Params:
+- `path` (<span data-cli="meta"><span data-cli="type">string</span>, <span data-cli="tag" data-variant="required">required</span></span>)  -  Filesystem path of a .docx, .xlsx, or .pptx file.
+- `selector` (<span data-cli="meta"><span data-cli="type">string</span>, <span data-cli="tag" data-variant="required">required</span></span>)  -  Selector, for example paragraph[style=Heading1] or cell[value=Alice].
+
+#### office_add
+
+Add a paragraph, run, table, row, cell, sheet, slide, shape, or picture.
+
+Params:
+- `after` (<span data-cli="meta"><span data-cli="type">string</span></span>)
+- `before` (<span data-cli="meta"><span data-cli="type">string</span></span>)
+- `index` (<span data-cli="meta"><span data-cli="type">integer</span></span>)  -  0-based for docx.
+- `parent` (<span data-cli="meta"><span data-cli="type">string</span></span>)  -  Parent office path.
+- `path` (<span data-cli="meta"><span data-cli="type">string</span>, <span data-cli="tag" data-variant="required">required</span></span>)  -  Filesystem path of a .docx, .xlsx, or .pptx file.
+- `props` (<span data-cli="meta"><span data-cli="type">object</span></span>)  -  String properties: text, value, bold, italic, style, color, size, font, fill, preset, animation, background, transition, src, rows, cols, name, ref, x, y, w, h,…
+- `type` (<span data-cli="meta"><span data-cli="type">string</span>, <span data-cli="tag" data-variant="required">required</span></span>)  -  paragraph, run, table, row, cell, sheet, slide, shape, or picture.
+
+#### office_set
+
+Set properties on a node, including pptx animation, transition, and background, or find and replace text.
+
+Params:
+- `find` (<span data-cli="meta"><span data-cli="type">string</span></span>)
+- `node` (<span data-cli="meta"><span data-cli="type">string</span></span>)  -  Office path.
+- `path` (<span data-cli="meta"><span data-cli="type">string</span>, <span data-cli="tag" data-variant="required">required</span></span>)  -  Filesystem path of a .docx, .xlsx, or .pptx file.
+- `props` (<span data-cli="meta"><span data-cli="type">object</span></span>)  -  String properties: text, value, bold, italic, style, color, size, font, fill, preset, animation, background, transition, src, rows, cols, name, ref, x, y, w, h,…
+- `replace` (<span data-cli="meta"><span data-cli="type">string</span></span>)
+
+#### office_remove
+
+Remove a paragraph, run, table, row, cell, sheet cell, slide, or shape.
+
+Params:
+- `node` (<span data-cli="meta"><span data-cli="type">string</span>, <span data-cli="tag" data-variant="required">required</span></span>)  -  Office path of the element to remove.
+- `path` (<span data-cli="meta"><span data-cli="type">string</span>, <span data-cli="tag" data-variant="required">required</span></span>)  -  Filesystem path of a .docx, .xlsx, or .pptx file.
+
+#### office_move
+
+Move a docx paragraph or table.
+
+Params:
+- `after` (<span data-cli="meta"><span data-cli="type">string</span></span>)
+- `before` (<span data-cli="meta"><span data-cli="type">string</span></span>)
+- `index` (<span data-cli="meta"><span data-cli="type">integer</span></span>)
+- `node` (<span data-cli="meta"><span data-cli="type">string</span>, <span data-cli="tag" data-variant="required">required</span></span>)
+- `path` (<span data-cli="meta"><span data-cli="type">string</span>, <span data-cli="tag" data-variant="required">required</span></span>)  -  Filesystem path of a .docx, .xlsx, or .pptx file.
+
+#### office_swap
+
+Swap two docx paragraphs or two docx tables.
+
+Params:
+- `node` (<span data-cli="meta"><span data-cli="type">string</span>, <span data-cli="tag" data-variant="required">required</span></span>)
+- `node2` (<span data-cli="meta"><span data-cli="type">string</span>, <span data-cli="tag" data-variant="required">required</span></span>)
+- `path` (<span data-cli="meta"><span data-cli="type">string</span>, <span data-cli="tag" data-variant="required">required</span></span>)  -  Filesystem path of a .docx, .xlsx, or .pptx file.
+
+#### office_batch
+
+Run several add, set, remove, view, get, or query operations, then save once.
+
+Params:
+- `commands` (<span data-cli="meta"><span data-cli="type">array</span>, <span data-cli="tag" data-variant="required">required</span></span>)  -  Objects with command or op, plus path, parent, type, props, find, replace, index, mode.
+- `path` (<span data-cli="meta"><span data-cli="type">string</span>, <span data-cli="tag" data-variant="required">required</span></span>)  -  Filesystem path of a .docx, .xlsx, or .pptx file.
+- `stop_on_error` (<span data-cli="meta"><span data-cli="type">boolean</span></span>)
+
+#### office_validate
+
+Open the package and parse its main part.
+
+Params:
+- `path` (<span data-cli="meta"><span data-cli="type">string</span>, <span data-cli="tag" data-variant="required">required</span></span>)  -  Filesystem path of a .docx, .xlsx, or .pptx file.
 
 #### create_command
 
@@ -885,6 +992,19 @@ Params:
 ---
 
 ### Other
+
+#### read
+
+Read a document or web page and write one audio file.
+
+Params:
+- `chat_preset` (<span data-cli="meta"><span data-cli="type">string</span></span>)  -  Saved chat preset for the rewrite.
+- `dst` (<span data-cli="meta"><span data-cli="type">string</span></span>)  -  Audio file to write.
+- `language` (<span data-cli="meta"><span data-cli="type">string</span></span>)  -  Spoken language passed to the rewrite.
+- `path` (<span data-cli="meta"><span data-cli="type">string</span>, <span data-cli="tag" data-variant="required">required</span></span>)  -  Local document or http(s) URL.
+- `play` (<span data-cli="meta"><span data-cli="type">boolean</span>, <span data-cli="default">default <span data-cli="value">false</span></span></span>)  -  Also play the file.
+- `prompt` (<span data-cli="meta"><span data-cli="type">string</span></span>)  -  Optional rewrite of the whole document before speech.
+- `refresh` (<span data-cli="meta"><span data-cli="type">boolean</span>, <span data-cli="default">default <span data-cli="value">false</span></span></span>)  -  Convert the document again and replace the cached pages.
 
 #### app_command
 
