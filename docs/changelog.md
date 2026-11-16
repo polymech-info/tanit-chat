@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.0.94 - 16-11
+
+- Android/Desktop: Translator | LLM server security
+- Video controls
+
+## 1.0.93 - 14-11
+
+- Android & Desktop pairing - suppport for Tailscale setups
+- Session tray (`tray`) toggles services from services.json: in-process MCP, child CLI processes with logs under logs/services, and a separate shutdown for each
+- LLM Server: Audio source enumeration and streaming
+- Android: Office viewer | Reader | Voice Recorder | Screen Recorder | Video Generator | Chat | VFS / Storage Support
+- Tanit Viewer: Rich Office Viewer - MS / LibreOffice
+
 ## 1.0.91 - 11-11
 
 - LLM Server refinements
@@ -7,7 +20,6 @@
 - Audio: Reader
 - Office: ported Office-CLI to C++ | Office viewer and indexer
 - Android layer
-
 
 ## 1.0.90 - 31-10
 

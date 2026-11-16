@@ -2360,7 +2360,7 @@ Options:
 - `--lan-port` (<span data-cli="meta"><span data-cli="type">INT</span>, <span data-cli="default">default <span data-cli="value">0</span></span></span>) - TLS port for --lan (default: --port + 1). Phones connect here, not to cleartext HTTP.
 - `--lan-name` (<span data-cli="meta"><span data-cli="type">TEXT</span></span>) - Display name in mDNS and the pairing QR. Default: this computer's name.
 - `--pair` (<span data-cli="meta"><span data-cli="tag" data-variant="flag">flag</span></span>) - With --serve, open a one-time pairing window and show a QR (implies --lan). The URI contains a short-lived secret.
-- `--pair-scopes` (<span data-cli="meta"><span data-cli="type">TEXT</span></span>) - Comma list granted by --pair: chat, files, tools, video. Default: chat, files, tools. video is the remote desktop viewer.
+- `--pair-scopes` (<span data-cli="meta"><span data-cli="type">TEXT</span></span>) - Comma list granted by --pair: chat, files, tools, video, audio. Default: chat, files, tools. video is the remote desktop viewer. audio is microphone and loopback capture.
 - `--lan-devices` (<span data-cli="meta"><span data-cli="tag" data-variant="flag">flag</span></span>) - List paired phones (id, name, scopes). Does not require --serve.
 - `--lan-revoke` (<span data-cli="meta"><span data-cli="type">TEXT</span></span>) - Revoke one paired phone by id. Does not require --serve. A running --lan daemon picks the change up from the device file.
 - `--host-tool-provider` (<span data-cli="meta"><span data-cli="type">TEXT</span></span>) - Register an HTTP IAgentToolProvider as id=http://127.0.0.1:port/path (repeatable). Loopback HTTP only. Also TANIT_HOST_TOOL_PROVIDER.
@@ -5427,7 +5427,7 @@ tanit-cli login --probe --no-browser --device-code --username 'foo' --password '
 
 #### audio
 
-Audio utilities: list devices, record, play, filter, synthesise, and change voices.
+Audio utilities: list devices, record, play, filter, synthesise, change voices, and live speech translation.
 
 **Example**
 
@@ -6001,6 +6001,149 @@ tanit-cli audio tts-scripted --srt <value> --dst <value>
 ```sh
 tanit-cli audio tts-scripted --srt 'foo' --dst 'foo' --provider 'foo' --api-key 'foo' --voice-id 'foo' --model-id 'foo' --overflow 'resolve' --speed '1' --max-stretch-pct '12' --min-gap-ms 80 --seed -1 --cache-dir 'foo'
 ```
+
+---
+
+#### audio translate
+
+Live speech-to-speech translation via OpenAI /v1/realtime/translations (mic → interpreter → speaker). Uses tanit-realtime-translate or gpt-realtime-translate. Ctrl+C or --duration-ms ends the session.
+
+Options:
+
+- `--lang,--language` (<span data-cli="meta"><span data-cli="type">TEXT</span></span>) - Target language code (e.g. es, fr, de, ja).
+- `--model` (<span data-cli="meta"><span data-cli="type">TEXT</span></span>) - Model id (default: tanit-realtime-translate, or gpt-realtime-translate on openai).
+- `--router` (<span data-cli="meta"><span data-cli="type">TEXT</span></span>) - Provider router override (tanit / openai). Empty uses chat realtime router.
+- `--mic` (<span data-cli="meta"><span data-cli="type">TEXT</span></span>) - Capture device name substring (empty = Audio & Video settings / default).
+- `--speaker` (<span data-cli="meta"><span data-cli="type">TEXT</span></span>) - Playback device name substring (empty = Audio & Video settings / default).
+- `--noise` (<span data-cli="meta"><span data-cli="type">TEXT</span></span>) - Input noise reduction: near_field | far_field | off.
+- `--duration-ms` (<span data-cli="meta"><span data-cli="type">INT</span></span>) - Stop after this many milliseconds (0 = until Ctrl+C).
+- `--cancel-after-ms` (<span data-cli="meta"><span data-cli="type">INT</span></span>) - Fire the Ctrl+C cancel latch after this many milliseconds (tests).
+- `--playback` (<span data-cli="meta"><span data-cli="tag" data-variant="enum">one of</span> <span data-cli="choices" data-variant="enum"><span data-cli="choice">simultaneous</span> <span data-cli="choice">conversational</span> <span data-cli="choice">after_silence</span> <span data-cli="choice">vad</span></span></span>) - simultaneous (play as received) or conversational (hold until VAD silence).
+- `--silence-ms` (<span data-cli="meta"><span data-cli="type">INT</span></span>) - End-of-speech silence for conversational playback (200–2000, default 500).
+- `--playback-buffer-ms` (<span data-cli="meta"><span data-cli="type">INT:INT in [0 - 5000]</span></span>) - Initial conversational jitter buffer (0–5000, default 3000).
+- `--src` (<span data-cli="meta"><span data-cli="type">TEXT</span></span>) - Feed a WAV/PCM file instead of the mic (paced realtime). Use with `audio tts --dst … --no-play` to battle-test without speaking.
+- `--loop` (<span data-cli="meta"><span data-cli="tag" data-variant="flag">flag</span></span>) - Loop --src until --duration-ms or Ctrl+C.
+- `--vad-log` (<span data-cli="meta"><span data-cli="tag" data-variant="flag">flag</span></span>) - Log conversational VAD speech_start / speech_end events.
+- `--switch-lang` (<span data-cli="meta"><span data-cli="type">TEXT</span></span>) - Switch the output language on the live session (no reconnect).
+- `--switch-after-ms` (<span data-cli="meta"><span data-cli="type">INT</span></span>) - Wait this long after ready, then apply --switch-lang.
+
+**Example**
+
+```sh
+tanit-cli audio translate
+```
+
+**Full example**
+
+```sh
+tanit-cli audio translate --lang 'es' --model 'foo' --router 'foo' --mic 'foo' --speaker 'foo' --noise 'near_field' --duration-ms 0 --cancel-after-ms 0 --playback 'simultaneous' --silence-ms 500 --playback-buffer-ms 3000 --src 'foo' --loop --vad-log --switch-lang 'foo' --switch-after-ms 0
+```
+
+##### Examples
+
+Live speech-to-speech translation (interpreter). Mic → `/v1/realtime/translations` →
+speakers. Not a voice agent: no tools, no turns, no `response.create`. Stop with
+Ctrl+C or `--duration-ms` (the CLI prints the stop reason).
+
+**Tanit proxy (recommended)**
+
+```sh
+tanit-cli audio translate --router tanit --model tanit-realtime-translate --lang es
+```
+
+Uses the chat Tanit credentials from App Settings. Alias bills through LiteLLM
+(`tanit-realtime-translate` → `openai/gpt-realtime-translate`).
+
+**Bounded smoke (JSON transcripts)**
+
+```sh
+tanit-cli audio translate --router tanit --model tanit-realtime-translate \
+  --lang es --duration-ms 30000 --json
+```
+
+Emits `{"type":"in"|"out"|"stopped","…"}` lines on stdout. A 30s bound stops with
+reason `duration-ms` — that is intentional, not a hang.
+
+**Direct OpenAI**
+
+```sh
+tanit-cli audio translate --router openai --model gpt-realtime-translate --lang fr
+```
+
+**Device + noise**
+
+```sh
+tanit-cli audio translate --router tanit --lang de \
+  --mic Yeti --speaker Headphones --noise far_field
+```
+
+Empty `--mic` / `--speaker` use Audio & Video settings, then the system default.
+`--noise off` disables input noise reduction (`near_field` is the default).
+
+**Conversational playback (local VAD)**
+
+```sh
+tanit-cli audio translate --router tanit --lang es \
+  --playback conversational --silence-ms 700 \
+  --playback-buffer-ms 3000 --vad-log --log-level debug
+```
+
+The translation stream stays continuous. Translated PCM is held until WebRTC VAD
+(or RMS fallback) sees `--silence-ms` of end-of-speech silence (200–2000), then
+released to the speakers. `--playback-buffer-ms` (0–5000, default 3000) is the
+lead before that burst starts. It is not armed again while audio is still
+playing. Prefer `--silence-ms 700`–`1000` so a mid-sentence pause does not
+release early.
+
+While translated audio is queued or was rendered in the last 500 ms, the mic is
+replaced with silence on the wire. A turn that already started is still sent
+until `speech_end`. Provider digital silence is discarded, so it cannot hold
+the speaker queue open. `--playback simultaneous` (default) plays as received,
+with a short ~200 ms lead.
+
+`--log-level debug` prints the gate line (`uplink=open` / `uplink=silence`,
+`queued_ms`, `priming`, `playout underruns`, `refill_gaps`). The first
+`session.updated` logs `warmup_ms=`.
+
+**Switch the output language on the same session**
+
+```sh
+tanit-cli audio translate --router tanit --lang es \
+  --switch-lang de --switch-after-ms 1200 \
+  --playback conversational --json --log-level debug
+```
+
+`--switch-lang` sends `session.update`. It does not reconnect and does not
+flush the playback queue. Stdout gains `{"type":"language","text":"de"}`.
+The log then shows `language=de warmup_ms=` for that update. The initial
+ready line is `warmup_ms=` with `lang=es`.
+
+**Battle-test with a TTS WAV (no mic)**
+
+```sh
+tanit-cli audio tts --provider tanit --text "Hello, how are you today?" \
+  --dst %TEMP%\tr-en.wav --no-play --format pcm_44100
+
+tanit-cli audio translate --router tanit --lang es \
+  --src %TEMP%\tr-en.wav --playback conversational --silence-ms 700 \
+  --vad-log --json
+```
+
+`--src` paces the file in realtime (16 kHz mono after decode). Without `--loop`,
+the session stops shortly after EOF (`src-eof`). Use `--loop --duration-ms 60000`
+for a longer paced soak.
+
+###### Notes
+
+- Target language is a BCP-47 / ISO code (`es`, `fr`, `de`, `ja`, …).
+- Audio is always 24 kHz PCM16 on the wire; capture is resampled from the mic rate.
+- Transcript deltas keep spaces. A missing boundary between two words is filled.
+  `session.input_transcript.done` and `session.output_transcript.done` are the
+  punctuated utterance.
+- Prefer Tanit in product paths so usage shows up on the proxy spend dashboards.
+- Do not call `session.close` at each silence — that ends the whole session.
+- `--cancel-after-ms` trips the same latch as Ctrl+C. On Windows, sending
+  Ctrl+Break from a test runner kills the process before that drain.
 
 #### voice
 
@@ -7651,7 +7794,7 @@ Audio session contracts: lease preemption, device routing, event envelope, PCM g
 
 Options:
 
-- `--suite` (<span data-cli="meta"><span data-cli="default">default <span data-cli="value">all</span></span>, <span data-cli="tag" data-variant="enum">one of</span> <span data-cli="choices" data-variant="enum"><span data-cli="choice">all</span> <span data-cli="choice">lease</span> <span data-cli="choice">route</span> <span data-cli="choice">event</span> <span data-cli="choice">graph</span></span></span>) - all, lease, route, event, graph
+- `--suite` (<span data-cli="meta"><span data-cli="default">default <span data-cli="value">all</span></span>, <span data-cli="tag" data-variant="enum">one of</span> <span data-cli="choices" data-variant="enum"><span data-cli="choice">all</span> <span data-cli="choice">lease</span> <span data-cli="choice">route</span> <span data-cli="choice">event</span> <span data-cli="choice">graph</span></span></span>) - all, lease, route, event, graph, record, voice, vad-gate
 
 **Example**
 
@@ -8252,7 +8395,7 @@ tanit-cli daemon run --tray
 
 #### daemon tray
 
-Run the user-session tray daemon with global hotkeys and a notification-area menu.
+Run the hotkey daemon with its own notification icon. Prefer `tray` to toggle services from services.json.
 
 **Example**
 
@@ -8264,7 +8407,7 @@ tanit-cli daemon tray
 
 #### daemon register
 
-Windows: register the daemon for logon by writing HKLM Run (requires elevation). Seeds config if missing.
+Windows: register the session tray for logon by writing HKLM Run (requires elevation). Seeds daemon.json if missing. The tray reads services.json.
 
 **Example**
 
@@ -8276,7 +8419,7 @@ tanit-cli daemon register
 
 #### daemon unregister
 
-Windows: remove the daemon HKLM Run entry (requires elevation).
+Windows: remove the logon Run entry (requires elevation) and stop the session tray.
 
 **Example**
 
@@ -8307,6 +8450,99 @@ Print the effective daemon.json path and exit.
 ```sh
 tanit-cli daemon path
 ```
+
+### Servers
+
+#### tray
+
+Session tray driven by services.json (next to daemon.json). Builtin servers such as MCP run in this process. CLI services are child processes; stdout and stderr go to logs/services/<id>.log. Exit stops the services this tray started.
+
+**Example**
+
+```sh
+tanit-cli tray
+```
+
+#### tray run
+
+Run the session tray (default).
+
+**Example**
+
+```sh
+tanit-cli tray run
+```
+
+---
+
+#### tray status
+
+Print service state as JSON.
+
+**Example**
+
+```sh
+tanit-cli tray status
+```
+
+---
+
+#### tray path
+
+Print the services.json path.
+
+**Example**
+
+```sh
+tanit-cli tray path
+```
+
+---
+
+#### tray start
+
+Start one service by id.
+
+Options:
+
+- `id` (<span data-cli="meta"><span data-cli="type">TEXT</span>, <span data-cli="tag" data-variant="required">required</span></span>) - Service id from services.json
+
+**Example**
+
+```sh
+tanit-cli tray start id <id>
+```
+
+**Full example**
+
+```sh
+tanit-cli tray start id 'foo'
+```
+
+---
+
+#### tray stop
+
+Stop one service by id, or --host to exit the tray.
+
+Options:
+
+- `id` (<span data-cli="meta"><span data-cli="type">TEXT</span></span>) - Service id from services.json
+- `--host` (<span data-cli="meta"><span data-cli="tag" data-variant="flag">flag</span></span>) - Ask the running tray to exit. It stops services it started.
+
+**Example**
+
+```sh
+tanit-cli tray stop
+```
+
+**Full example**
+
+```sh
+tanit-cli tray stop id 'foo' --host
+```
+
+### Automation
 
 #### assistant
 
@@ -9117,7 +9353,7 @@ tanit-cli info compact --dst 'releases/web-docs/cli/cli.md' --stdout --skill --a
 
 #### llama
 
-GGUF embedding: embed texts, rank candidates by cosine similarity, or benchmark.
+GGUF models: embed, match, benchmark, vlm, or a speculative draft smoke run.
 
 **Example**
 
@@ -9234,6 +9470,40 @@ tanit-cli llama vlm -m <value> --mmproj <value> -i <value>
 
 ```sh
 tanit-cli llama vlm -m 'foo' --mmproj 'foo' -i 'foo' -p 'OCR:' -j 4 --ctx 8192 -n 2048 --ngl -1 --frame '{}'
+```
+
+---
+
+#### llama draft
+
+Speculative smoke run. Loads a target GGUF and a drafter GGUF, generates --n-predict tokens, and prints acceptance and decode speed as JSON. DFlash 2 uses --spec-type draft-dflash (the default) with --draft-n-max 7. Sampler defaults are temp 1, top-k 20, top-p 0.95.
+
+Options:
+
+- `-m,--model` (<span data-cli="meta"><span data-cli="type">TEXT</span>, <span data-cli="tag" data-variant="required">required</span></span>) - Target GGUF (the chat model).
+- `--draft` (<span data-cli="meta"><span data-cli="type">TEXT</span>, <span data-cli="tag" data-variant="required">required</span></span>) - Drafter GGUF. For DFlash 2 this is the z-lab drafter, not a second copy of the target.
+- `--spec-type` (<span data-cli="meta"><span data-cli="type">TEXT</span>, <span data-cli="default">default <span data-cli="value">draft-dflash</span></span></span>) - Speculative decoder: draft-dflash (default), draft-dspark, draft-mtp, draft-simple, or auto.
+- `-p,--prompt` (<span data-cli="meta"><span data-cli="type">TEXT</span>, <span data-cli="tag" data-variant="required">required</span></span>) - Plain prompt to generate from.
+- `-n,--n-predict` (<span data-cli="meta"><span data-cli="type">INT:INT in [1 - 4096]</span>, <span data-cli="default">default <span data-cli="value">64</span></span></span>) - Maximum new tokens (default 64).
+- `--draft-n-max` (<span data-cli="meta"><span data-cli="type">INT:INT in [1 - 16]</span>, <span data-cli="default">default <span data-cli="value">7</span></span></span>) - Maximum draft tokens per step (default 7, the DFlash 2 block).
+- `-j,--threads` (<span data-cli="meta"><span data-cli="type">INT:INT in [1 - 256]</span>, <span data-cli="default">default <span data-cli="value">4</span></span></span>) - CPU threads (default 4).
+- `--ctx` (<span data-cli="meta"><span data-cli="type">INT:INT in [512 - 262144]</span>, <span data-cli="default">default <span data-cli="value">8192</span></span></span>) - Context length for the target (default 8192).
+- `--ngl,--gpu-layers` (<span data-cli="meta"><span data-cli="type">INT:INT in [-1 - 1000]</span>, <span data-cli="default">default <span data-cli="value">-1</span></span></span>) - Target GPU layers (-1 = all, 0 = CPU; default -1).
+- `--draft-ngl` (<span data-cli="meta"><span data-cli="type">INT:INT in [-1 - 1000]</span>, <span data-cli="default">default <span data-cli="value">-1</span></span></span>) - Drafter GPU layers (-1 = all, 0 = CPU; default -1).
+- `--temp` (<span data-cli="meta"><span data-cli="type">FLOAT:FLOAT in [0 - 5]</span>, <span data-cli="default">default <span data-cli="value">1</span></span></span>) - Sampling temperature (default 1).
+- `--top-k` (<span data-cli="meta"><span data-cli="type">INT:INT in [0 - 100000]</span>, <span data-cli="default">default <span data-cli="value">20</span></span></span>) - Top-k (default 20).
+- `--top-p` (<span data-cli="meta"><span data-cli="type">FLOAT:FLOAT in [0 - 1]</span>, <span data-cli="default">default <span data-cli="value">0.95</span></span></span>) - Top-p (default 0.95).
+
+**Example**
+
+```sh
+tanit-cli llama draft -m <value> --draft <value> -p <value>
+```
+
+**Full example**
+
+```sh
+tanit-cli llama draft -m 'foo' --draft 'foo' --spec-type 'draft-dflash' -p 'foo' -n 64 --draft-n-max 7 -j 4 --ctx 8192 --ngl -1 --draft-ngl -1 --temp '1' --top-k 20 --top-p '0.95'
 ```
 
 #### hg
@@ -11026,6 +11296,8 @@ tanit-cli mcp client codebase-memory-mcp ingest_traces --args '{}' --timeout-ms 
 | `custom.help-xblox` | XBlox | Files | `app:open` | Open XBlox documentation locally | selection | `${TANIT_SHARED}/help/en/xblox.md` |
 | `custom.command-msakytc7-dd084` | Online Help | Files | `app:openurl` |  | selection | `https://tanit.polymech.info/user/cgo/pages/documentation` |
 | `custom.command-mujkxt3w-4af40` | Subtitles | Audio Converter | `cli:audio` | Create sub titles from Microphone - using local Whisper model | selection; mp3,wav,flac,m4a,aac,opus,wma,aiff,aif,oga,ogg,mid,midi->text | `record`<br>`--from-wav`<br>`${CURRENT_FILE}`<br>`--stt`<br>`--provider`<br>`whisper`<br>`--model`<br>`ggml-large-v3-turbo.bin`<br>`--subtitle-max-chars`<br>`42`<br>`--language`<br>`en`<br>`--subtitle-path`<br>`${SRC_DIR}/${SRC_NAME}.srt`<br>`--subtitle-format`<br>`srt`<br>`--hud` |
+| `custom.tray` | Tray | Daemon | `cli:tray` |  | selection | `run`<br>`--json`<br>`--bind`<br>`0.0.0.0` |
+| `custom.command-mwgmwgqd-90902` | MCP | Daemon | `cli:mcp` |  | selection; json->json | `--json`<br>`--bind`<br>`0.0.0.0` |
 
 Call custom commands with the exact dotted ID shown above, e.g. `tanit-cli.exe custom.mic-start`.
 Pass `...` extra args after `--` to append them to the configured command without wrapper interception.
