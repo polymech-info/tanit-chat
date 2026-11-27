@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.97 - 27-11
+
+- Tanit Viewer/Chat/Android: VFS (docs & CLI)
+
 ## 1.0.96 - 26-11
 
 - Tanit Viewer/Chat: Tray / Services | Node Pair / Tanit Mesh

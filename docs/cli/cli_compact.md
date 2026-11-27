@@ -247,7 +247,10 @@ meta (input,out-dir,provider,model,...) - Generate description / JSON / EXIF for
 meta gen (input,template,p,values,...) - Generate metadata from a template. Dry-run prints the tag plan. --write commits XMP, and IPTC...
 mkdir (paths,s,d) - Create folders through the VFS queue (local, ssh://, ftp://, vfs://). Existing folders succeed.
 mv (paths,s,d,conflict,...) - Move files or folders through the VFS queue (copy then delete source).
-node devices - List paired phones.
+node devices - List phones paired to this computer (what we grant them).
+node info (id) - Show one pair-device or dial-book peer. Peers also probe live grant and mounts.
+node ls (path,glob) - List shared mounts or a folder on a dial-book phone.
+node peers - List dial-book phones this computer can pull shared folders from (vfs://).
 node revoke (id) - Revoke one paired phone.
 node serve (host,port,serve-api-key,lan-port,...) - Listen for paired phones. Mounts lan and vfs. Does not mount the agent.
 pdf info (path,password) - Print page count and page sizes.

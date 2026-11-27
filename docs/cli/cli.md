@@ -1040,7 +1040,7 @@ Options:
 - `paths` (<span data-cli="meta"><span data-cli="type">TEXT</span></span>) - Sources and destination folder. Last path is dest unless --dst is set.
 - `-s,--src` (<span data-cli="meta"><span data-cli="type">TEXT</span></span>) - Source path, glob, or URI (repeatable). ${CWD} ${KNOWNFOLDER:…} ${ENV:…} ${SRC_NAME} …
 - `-d,--dst,--dest` (<span data-cli="meta"><span data-cli="type">TEXT</span></span>) - Destination folder path or URI. Same ${…} variables as --src.
-- `--conflict` (<span data-cli="meta"><span data-cli="type">TEXT</span></span>) - Conflict strategy: error (default), overwrite, skip, rename, if-newer.
+- `--conflict` (<span data-cli="meta"><span data-cli="type">TEXT</span></span>) - Conflict strategy: error (default), overwrite, skip, rename, if-newer, append, reget (resume).
 - `--overwrite` (<span data-cli="meta"><span data-cli="tag" data-variant="flag">flag</span></span>) - Overwrite existing dest files.
 - `--skip` (<span data-cli="meta"><span data-cli="tag" data-variant="flag">flag</span></span>) - Skip existing dest files.
 - `--rename` (<span data-cli="meta"><span data-cli="tag" data-variant="flag">flag</span></span>) - Rename dest when it already exists.
@@ -1051,6 +1051,7 @@ Options:
 - `--no-gitignore` (<span data-cli="meta"><span data-cli="tag" data-variant="flag">flag</span></span>) - Do not apply .gitignore / .ignore rules.
 - `--include-vcs` (<span data-cli="meta"><span data-cli="tag" data-variant="flag">flag</span></span>) - Also copy .git / .svn / .hg trees (skipped by default).
 - `--dry-run` (<span data-cli="meta"><span data-cli="tag" data-variant="flag">flag</span></span>) - Expand sources and dest; do not copy.
+- `--ui` (<span data-cli="meta"><span data-cli="tag" data-variant="flag">flag</span></span>) - Interactive TTY progress (batch + current file + speed) and conflict prompts (FTXUI).
 
 **Example**
 
@@ -1061,7 +1062,7 @@ tanit-cli cp
 **Full example**
 
 ```sh
-tanit-cli cp paths '{}' -s '{}' -d 'foo' --conflict 'foo' --overwrite --skip --rename --if-newer --include '{}' --exclude '{}' --mask 'foo' --no-gitignore --include-vcs --dry-run
+tanit-cli cp paths '{}' -s '{}' -d 'foo' --conflict 'foo' --overwrite --skip --rename --if-newer --include '{}' --exclude '{}' --mask 'foo' --no-gitignore --include-vcs --dry-run --ui
 ```
 
 ##### Examples
@@ -1070,11 +1071,13 @@ tanit-cli cp paths '{}' -s '{}' -d 'foo' --conflict 'foo' --overwrite --skip --r
 
 `${CWD}`, `${ENV:…}`, `${KNOWNFOLDER:Desktop}`, and `${SRC_NAME}` expand in `--src` and `--dst`.
 
+On **PowerShell**, single-quote Tanit `${…}` tokens (or use `--dst '…'`). Double-quoted `"${KNOWNFOLDER:Desktop}"` is eaten by PowerShell as a drive-scoped variable and the dest vanishes, which surfaces as `missing source`.
+
 **Local folder**
 
 ```sh
 tanit-cli cp report.pdf notes.md ./out
-tanit-cli cp "shots/*.{jpg,png}" --dst "${KNOWNFOLDER:Desktop}"
+tanit-cli cp "shots/*.{jpg,png}" --dst '${KNOWNFOLDER:Desktop}'
 ```
 
 **Preview, then copy**
@@ -1106,7 +1109,7 @@ tanit-cli cp diagram.png vfs://home/public
 tanit-cli cp vfs://models/weights/model.gguf ./models --if-newer
 ```
 
-**Phone or camera** (folder names come from the device)
+**Phone or camera (MTP)** (folder names come from the device)
 
 ```sh
 tanit-cli cp "mtp://realme/Internal storage/DCIM/IMG.jpg" ./inbox
@@ -1114,6 +1117,67 @@ tanit-cli cp shot.jpg "mtp://realme/Internal storage/DCIM"
 ```
 
 Copy a phone file to a local folder, then copy that folder to SSH, FTP, or VFS. One command cannot put the phone on one side and SSH, FTP, or VFS on the other.
+
+**Phone shared folders (`vfs://phone-…`)** — dial-book peer from `node peers`. Discover mounts with `node ls`, then copy. Put include/exclude globs on flags, not in the URI (`vfs://…/*.jpg` is not expanded on the phone).
+
+###### Full backup (whole mount)
+
+```sh
+tanit-cli node peers --json
+tanit-cli node ls phone-0e404e231f39ff6c --json
+tanit-cli cp --dry-run --json --dst '${KNOWNFOLDER:Desktop}/phone-backup/pictures' vfs://phone-0e404e231f39ff6c/pictures
+tanit-cli cp --dst '${KNOWNFOLDER:Desktop}/phone-backup/pictures' vfs://phone-0e404e231f39ff6c/pictures
+tanit-cli cp --dst '${KNOWNFOLDER:Desktop}/phone-backup/dcim' vfs://phone-0e404e231f39ff6c/dcim
+```
+
+###### Partial backup (include / exclude)
+
+```sh
+tanit-cli node ls vfs://phone-0e404e231f39ff6c/dcim/Camera --glob "*.{jpg,jpeg,png,mp4}" --json
+tanit-cli cp --dst '${KNOWNFOLDER:Desktop}/phone-photos' vfs://phone-0e404e231f39ff6c/dcim/Camera --include "*.jpg" --include "*.jpeg" --include "*.png" --include "*.mp4" --exclude "*.tmp"
+```
+
+###### Incremental backup (auto conflict)
+
+Default conflict policy is `error`: a second run stops on the first file that already exists. Pick an auto strategy so re-runs only pull what you want. Convenience flags (`--if-newer`, `--skip`, …) are aliases of `--conflict …`.
+
+Preview what would change, then sync only newer sources (usual daily backup):
+
+```sh
+tanit-cli cp --dry-run --json --if-newer --dst '${KNOWNFOLDER:Desktop}/phone-backup/dcim' vfs://phone-0e404e231f39ff6c/dcim
+tanit-cli cp --if-newer --dst '${KNOWNFOLDER:Desktop}/phone-backup/dcim' vfs://phone-0e404e231f39ff6c/dcim
+tanit-cli cp --conflict if-newer --include "*.jpg" --include "*.mp4" --dst '${KNOWNFOLDER:Desktop}/phone-photos' vfs://phone-0e404e231f39ff6c/dcim/Camera
+```
+
+Fill gaps without ever overwriting an existing dest (new camera rolls only):
+
+```sh
+tanit-cli cp --skip --dst '${KNOWNFOLDER:Desktop}/phone-backup/pictures' vfs://phone-0e404e231f39ff6c/pictures
+```
+
+Resume a truncated **local** dest after an interrupted pull (`reget` / `resume` continues from dest size when the source is larger; `append` keeps dest bytes and writes the full source after them). Neither applies to remote destinations:
+
+```sh
+tanit-cli cp --conflict reget --include "*.mp4" --dst '${KNOWNFOLDER:Desktop}/phone-videos' vfs://phone-0e404e231f39ff6c/dcim/Camera
+tanit-cli cp --conflict append --dst '${KNOWNFOLDER:Desktop}/phone-videos' vfs://phone-0e404e231f39ff6c/dcim/Camera/VID_001.mp4
+```
+
+Clobber or keep a sibling name when you intentionally want that:
+
+```sh
+tanit-cli cp --overwrite --dst '${KNOWNFOLDER:Desktop}/phone-backup/dcim' vfs://phone-0e404e231f39ff6c/dcim
+tanit-cli cp --rename --dst '${KNOWNFOLDER:Desktop}/phone-backup/dcim' vfs://phone-0e404e231f39ff6c/dcim
+```
+
+###### Interactive progress (`--ui`)
+
+FTXUI TTY: batch + current-file gauges, speed, Esc / Ctrl+C cancel. Needs an interactive terminal. Plain `--ui` (default conflict `error`) opens Manual prompts. With an auto strategy (`--if-newer`, `--skip`, `--conflict reget`, …) the UI stays Auto — progress only, no mid-scan Manual park.
+
+```sh
+tanit-cli cp --ui --if-newer --dst '${KNOWNFOLDER:Desktop}/phone-backup/pictures' vfs://phone-0e404e231f39ff6c/pictures
+tanit-cli cp --ui --conflict reget --include "*.mp4" --dst '${KNOWNFOLDER:Desktop}/phone-videos' vfs://phone-0e404e231f39ff6c/dcim/Camera
+tanit-cli cp --ui --include "*.jpg" --dst '${KNOWNFOLDER:Desktop}/phone-photos' vfs://phone-0e404e231f39ff6c/dcim/Camera
+```
 
 **Keep or drop names**
 
@@ -1130,7 +1194,7 @@ Options:
 - `paths` (<span data-cli="meta"><span data-cli="type">TEXT</span></span>) - Sources and destination folder. Last path is dest unless --dst is set.
 - `-s,--src` (<span data-cli="meta"><span data-cli="type">TEXT</span></span>) - Source path, glob, or URI (repeatable). ${CWD} ${KNOWNFOLDER:…} ${ENV:…} ${SRC_NAME} …
 - `-d,--dst,--dest` (<span data-cli="meta"><span data-cli="type">TEXT</span></span>) - Destination folder path or URI. Same ${…} variables as --src.
-- `--conflict` (<span data-cli="meta"><span data-cli="type">TEXT</span></span>) - Conflict strategy: error (default), overwrite, skip, rename, if-newer.
+- `--conflict` (<span data-cli="meta"><span data-cli="type">TEXT</span></span>) - Conflict strategy: error (default), overwrite, skip, rename, if-newer, append, reget (resume).
 - `--overwrite` (<span data-cli="meta"><span data-cli="tag" data-variant="flag">flag</span></span>) - Overwrite existing dest files.
 - `--skip` (<span data-cli="meta"><span data-cli="tag" data-variant="flag">flag</span></span>) - Skip existing dest files.
 - `--rename` (<span data-cli="meta"><span data-cli="tag" data-variant="flag">flag</span></span>) - Rename dest when it already exists.
@@ -1141,6 +1205,7 @@ Options:
 - `--no-gitignore` (<span data-cli="meta"><span data-cli="tag" data-variant="flag">flag</span></span>) - Do not apply .gitignore / .ignore rules.
 - `--include-vcs` (<span data-cli="meta"><span data-cli="tag" data-variant="flag">flag</span></span>) - Also copy .git / .svn / .hg trees (skipped by default).
 - `--dry-run` (<span data-cli="meta"><span data-cli="tag" data-variant="flag">flag</span></span>) - Expand sources and dest; do not move.
+- `--ui` (<span data-cli="meta"><span data-cli="tag" data-variant="flag">flag</span></span>) - Interactive TTY progress (batch + current file + speed) and conflict prompts (FTXUI).
 
 **Example**
 
@@ -1151,7 +1216,7 @@ tanit-cli mv
 **Full example**
 
 ```sh
-tanit-cli mv paths '{}' -s '{}' -d 'foo' --conflict 'foo' --overwrite --skip --rename --if-newer --include '{}' --exclude '{}' --mask 'foo' --no-gitignore --include-vcs --dry-run
+tanit-cli mv paths '{}' -s '{}' -d 'foo' --conflict 'foo' --overwrite --skip --rename --if-newer --include '{}' --exclude '{}' --mask 'foo' --no-gitignore --include-vcs --dry-run --ui
 ```
 
 ##### Examples
@@ -2864,13 +2929,115 @@ tanit-cli node serve --host '127.0.0.1' --port 8090 --serve-api-key 'foo' --lan 
 
 #### node devices
 
-List paired phones.
+List phones paired to this computer (what we grant them).
 
 **Example**
 
 ```sh
 tanit-cli node devices
 ```
+
+##### Examples
+
+Phones paired **to** this computer (what we grant them), not the dial book used for `cp vfs://…`.
+
+```sh
+tanit-cli node devices
+tanit-cli node devices --json
+```
+
+---
+
+#### node peers
+
+List dial-book phones this computer can pull shared folders from (vfs://).
+
+**Example**
+
+```sh
+tanit-cli node peers
+```
+
+##### Examples
+
+Dial-book phones this computer can pull from (`lan/peers.json`). Authority is the `phone-…` id used in `vfs://` and `cp`.
+
+```sh
+tanit-cli node peers
+tanit-cli node peers --json
+```
+
+`token=held` means a wrapped dial token is stored. `urls=0` means the phone has not announced an address yet.
+
+---
+
+#### node info
+
+Show one pair-device or dial-book peer. Peers also probe live grant and mounts.
+
+Options:
+
+- `id` (<span data-cli="meta"><span data-cli="type">TEXT</span>, <span data-cli="tag" data-variant="required">required</span></span>) - Pair-device id or phone-… authority
+- `--offline` (<span data-cli="meta"><span data-cli="tag" data-variant="flag">flag</span></span>) - Dial-book peers: skip live grant/mounts probe.
+
+**Example**
+
+```sh
+tanit-cli node info id <id>
+```
+
+**Full example**
+
+```sh
+tanit-cli node info id 'foo' --offline
+```
+
+##### Examples
+
+One pair-device id, or a dial-book `phone-…` authority. Peers also probe live grant and mounts unless `--offline`.
+
+```sh
+tanit-cli node info phone-0e404e231f39ff6c
+tanit-cli node info phone-0e404e231f39ff6c --json
+tanit-cli node info phone-0e404e231f39ff6c --offline --json
+tanit-cli node info desk-a --json
+```
+
+---
+
+#### node ls
+
+List shared mounts or a folder on a dial-book phone.
+
+Options:
+
+- `path` (<span data-cli="meta"><span data-cli="type">TEXT</span>, <span data-cli="tag" data-variant="required">required</span></span>) - vfs://phone-…[/mount[/path]] or phone-…[/mount[/path]]. Bare phone-… lists mounts.
+- `--glob` (<span data-cli="meta"><span data-cli="type">TEXT</span></span>) - Keep leaf names matching this glob.
+
+**Example**
+
+```sh
+tanit-cli node ls path <path>
+```
+
+**Full example**
+
+```sh
+tanit-cli node ls path 'foo' --glob 'foo'
+```
+
+##### Examples
+
+List shared mounts or a folder on a dial-book phone. Bare `phone-…` lists mounts; a path lists that folder. Quote globs.
+
+```sh
+tanit-cli node ls phone-0e404e231f39ff6c
+tanit-cli node ls phone-0e404e231f39ff6c --json
+tanit-cli node ls vfs://phone-0e404e231f39ff6c/pictures --json
+tanit-cli node ls vfs://phone-0e404e231f39ff6c/dcim/Camera --glob "*.jpg"
+```
+
+Plan a backup without writing by combining `ls` with `cp --dry-run` (see `cp` examples).
 
 ---
 
